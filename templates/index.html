@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Integration</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center; /* Center horizontally */
+            align-items: center; /* Center vertically */
+            height: 100vh; /* Make sure the body takes up the full height of the viewport */
+            background: linear-gradient(to bottom right, rgba(0, 0, 0, 1), rgba(40, 40, 40, 1), rgba(80, 80, 80, 1), rgba(120, 120, 120, 1), rgba(160, 160, 160, 1));
+            color: white;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+        .container {
+            width: 350px; /* Set the width of the container */
+            height: 350px;
+            padding: 20px; /* Add some padding */
+            background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
+            border-radius: 10px; /* Add some rounded corners */
+        }
+        form {
+            margin: 0; /* Remove default margin */
+        }
+        input[type="text"], button {
+            margin-bottom: 10px; /* Add some space between input fields and buttons */
+            width: 100%; /* Make input fields and buttons full width */
+            font-size: 16px; /* Increase font size */
+        }
+        label {
+            font-size: 20px; /* Increase font size for labels */
+            text-align: left; /* Align labels to the left */
+        }
+        button {
+            font-size: 18px; /* Increase font size for buttons */
+            height: 40px; /* Adjust button height */
+        }
+        .mismatch-label {
+            color: red; /* Set color to red */
+            text-align: left; /* Align mismatch labels to the left */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <form id="integration-form" action="/submit" method="post">
+            <h3 style="justify-content: center;display: flex;">Integration Recorder</h3>
+            <label for="associate_name">Associate Name:</label><br>
+            <input type="text" id="associate_name" name="associate_name" value="{{ associate_name }}">
+            <br>
+            <label for="module_serial">Module Serial Number:</label><br>
+            <input type="text" id="module_serial" name="module_serial"><br>
+            <span id="module-mismatch" class="mismatch-label"></span><br>
+            <label for="mbo_serial">MBO Serial Number:</label><br>
+            <input type="text" id="mbo_serial" name="mbo_serial"><br>
+            <span id="mbo-mismatch" class="mismatch-label"></span><br>
+            <label for="control_card_serial">Control Card Serial Number:</label><br>
+            <input type="text" id="control_card_serial" name="control_card_serial"><br>
+            <span id="control-card-mismatch" class="mismatch-label"></span><br><br>
+        </form>
+    </div>
+
+    <script>
+        // Mock data for reference (replace with actual Excel sheet data)
+        const referenceData = {
+            'HE512865': { mbo: 'HE315441', controlCard: 'HE315451-20.22' },
+            'HE513140': { mbo: 'HE315471', controlCard: 'HE315451-20.23' },
+            'HE513180': { mbo: 'HE315731', controlCard: 'HE315741-31.12' },
+            'HE513190': { mbo: 'HE315781', controlCard: 'HE315941-20.31' },
+            'HE513351': { mbo: 'HE315781', controlCard: 'HE315941-20.31' },
+            'HE513356': { mbo: 'HE315441', controlCard: 'HE315451-20.22' },
+            'HE513391': { mbo: 'HE315441', controlCard: 'HE315451-20.22' },
+            'HE513390': { mbo: 'HE315441', controlCard: 'HE315451-20.22' },
+            'HE518143': { mbo: 'HE315471', controlCard: 'HE315451-20.23' },
+            'HE513380': { mbo: 'HE317381', controlCard: 'HE315742-31.13' },
+            'HE512868': { mbo: 'HE317731', controlCard: 'HE315451-20.22' },
+            'HE316231': { mbo: 'HE316231', controlCard: 'HE315451-20.31' },
+            'HE515014': { mbo: 'HE316231', controlCard: 'HE315451-20.31' },
+            'HE515130': { mbo: 'HE317701', controlCard: 'HE315452-20.31' },
+            'HE515114': { mbo: 'HE316371', controlCard: 'HE315941-20.31' },
+            'HE515116': { mbo: 'HE316231', controlCard: 'HE315451-20.31' },
+            'HE515023': { mbo: 'HE316231', controlCard: 'HE315451-20.31' },
+            'HE515119': { mbo: 'HE316371', controlCard: 'HE315941-20.31' },
+            'HE515123': { mbo: 'HE316231', controlCard: 'HE315451-20.31' }
+        };
+
+        const moduleSerial = document.getElementById('module_serial');
+        const mboSerial = document.getElementById('mbo_serial');
+        const controlCardSerial = document.getElementById('control_card_serial');
+        const moduleMismatchLabel = document.getElementById('module-mismatch');
+        const mboMismatchLabel = document.getElementById('mbo-mismatch');
+        const controlCardMismatchLabel = document.getElementById('control-card-mismatch');
+        const integrationForm = document.getElementById('integration-form');
+
+        // Function to check if input matches the reference data based on the module number
+        function checkInputsMatch(moduleValue, mboValue, controlCardValue) {
+            for (const moduleKey in referenceData) {
+                if (moduleValue.includes(moduleKey)) {
+                    const referenceModule = referenceData[moduleKey];
+                    return mboValue.includes(referenceModule.mbo) && controlCardValue.includes(referenceModule.controlCard);
+                }
+            }
+            return false;
+        }
+
+
+        // Function to display mismatch label if input does not match the reference data
+        function updateMismatchLabels() {
+            const moduleSerialValue = moduleSerial.value.trim().toUpperCase();
+            const mboSerialValue = mboSerial.value.trim().toUpperCase();
+            const controlCardSerialValue = controlCardSerial.value.trim().toUpperCase();
+
+            moduleMismatchLabel.textContent = Object.keys(referenceData).some(key => moduleSerialValue.includes(key)) ? '' : 'Module Number not found';
+            mboMismatchLabel.textContent = checkInputsMatch(moduleSerialValue, mboSerialValue, controlCardSerialValue) ? '' : 'Mismatch';
+            controlCardMismatchLabel.textContent = checkInputsMatch(moduleSerialValue, mboSerialValue, controlCardSerialValue) ? '' : 'Mismatch';
+
+            if (moduleSerialValue.length === 24 && mboSerialValue.length === 24 &&
+                controlCardSerialValue.length === 30 && moduleMismatchLabel.textContent === "" &&
+                mboMismatchLabel.textContent === '' && controlCardMismatchLabel.textContent === "") {
+                integrationForm.submit(); // Submit the form if all entries are filled and match the criteria
+            }
+        }
+
+        // Event listeners for input fields
+        [moduleSerial, mboSerial, controlCardSerial].forEach(input => {
+            input.addEventListener('input', () => {
+                updateMismatchLabels();
+            });
+        });
+    </script>
+</body>
+</html>
